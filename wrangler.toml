@@ -1,0 +1,8 @@
+name = "locationlists"
+compatibility_date = "2026-02-09"
+
+pages_build_output_dir = "."
+
+[[kv_namespaces]]
+binding = "LOCATION_LISTS"
+id = "c774ba07debe44e68694e67f9e1c7fa3"
