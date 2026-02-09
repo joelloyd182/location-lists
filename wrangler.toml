@@ -1,5 +1,0 @@
-name = "location-lists"
-compatibility_date = "2026-02-09"
-
-[site]
-bucket = "."
