@@ -402,11 +402,23 @@ main {
     font-size: 0.875rem;
 }
 
+.location-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.location-buttons button {
+    width: 100%;
+}
+
 .coords-display {
     margin-top: 0.5rem;
     padding: 0.5rem;
     background: var(--background);
     border-radius: 4px;
+    text-align: center;
 }
 
 .form-actions {

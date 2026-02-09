@@ -411,7 +411,12 @@ class LocationListsApp {
                 document.getElementById('coord-lat').textContent = this.currentPosition.lat.toFixed(6);
                 document.getElementById('coord-lng').textContent = this.currentPosition.lng.toFixed(6);
                 document.getElementById('location-coords').classList.remove('hidden');
+                document.getElementById('location-coords').dataset.source = 'current';
             }
+        });
+
+        document.getElementById('search-address-btn').addEventListener('click', () => {
+            this.geocodeAddress();
         });
 
         // Quick Add Item (Active List)
@@ -533,20 +538,70 @@ class LocationListsApp {
 
         if (!name) return;
 
-        // Get location from current position
-        if (!this.currentPosition) {
-            alert('Please wait for location to be acquired');
+        // Get location from the displayed coordinates
+        const coordsDisplay = document.getElementById('location-coords');
+        if (coordsDisplay.classList.contains('hidden')) {
+            alert('Please set a location using "Search Address" or "Use Current Location"');
             return;
         }
 
-        const location = {
-            lat: this.currentPosition.lat,
-            lng: this.currentPosition.lng
-        };
+        const lat = parseFloat(document.getElementById('coord-lat').textContent);
+        const lng = parseFloat(document.getElementById('coord-lng').textContent);
+
+        const location = { lat, lng };
 
         this.addStore(name, address, location, triggerRadius);
         this.hideStoreModal();
         this.renderStoresList();
+    }
+
+    async geocodeAddress() {
+        const address = document.getElementById('store-address').value.trim();
+        
+        if (!address) {
+            alert('Please enter an address to search');
+            return;
+        }
+
+        const searchBtn = document.getElementById('search-address-btn');
+        const originalText = searchBtn.textContent;
+        searchBtn.textContent = 'Searching...';
+        searchBtn.disabled = true;
+
+        try {
+            // Using Nominatim (OpenStreetMap) free geocoding API
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
+                {
+                    headers: {
+                        'User-Agent': 'LocationListsApp/1.0'
+                    }
+                }
+            );
+
+            const results = await response.json();
+
+            if (results && results.length > 0) {
+                const result = results[0];
+                document.getElementById('coord-lat').textContent = parseFloat(result.lat).toFixed(6);
+                document.getElementById('coord-lng').textContent = parseFloat(result.lon).toFixed(6);
+                document.getElementById('location-coords').classList.remove('hidden');
+                document.getElementById('location-coords').dataset.source = 'geocoded';
+                
+                // Update address field with the formatted address from geocoding
+                if (result.display_name) {
+                    document.getElementById('store-address').value = result.display_name;
+                }
+            } else {
+                alert('Address not found. Please try a different address or use "Use Current Location"');
+            }
+        } catch (error) {
+            console.error('Geocoding error:', error);
+            alert('Failed to look up address. Please check your connection or use "Use Current Location"');
+        } finally {
+            searchBtn.textContent = originalText;
+            searchBtn.disabled = false;
+        }
     }
 
     exportData() {
