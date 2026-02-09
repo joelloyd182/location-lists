@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2563eb">
+    <title>Location Lists</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header>
+            <h1>📍 Location Lists</h1>
+            <div id="location-status" class="status-indicator">
+                <span id="status-text">Getting location...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Active List View (shown when near a store) -->
+            <div id="active-list-view" class="hidden">
+                <div class="active-store-banner">
+                    <h2 id="active-store-name"></h2>
+                    <p id="active-store-distance"></p>
+                </div>
+                <div class="list-container">
+                    <ul id="active-items-list" class="items-list"></ul>
+                    <div class="add-item-form">
+                        <input type="text" id="quick-add-input" placeholder="Add item...">
+                        <button id="quick-add-btn">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stores Overview (shown when not near any store) -->
+            <div id="stores-overview">
+                <div class="section">
+                    <h2>Your Stores</h2>
+                    <div id="stores-list"></div>
+                    <button id="add-store-btn" class="btn-primary">+ Add Store</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-view="home">
+                <span>🏠</span>
+                <span>Home</span>
+            </button>
+            <button class="nav-btn" data-view="stores">
+                <span>🏪</span>
+                <span>Stores</span>
+            </button>
+            <button class="nav-btn" data-view="settings">
+                <span>⚙️</span>
+                <span>Settings</span>
+            </button>
+        </nav>
+
+        <!-- Modal: Add/Edit Store -->
+        <div id="store-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="store-modal-title">Add Store</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="store-form">
+                        <div class="form-group">
+                            <label for="store-name">Store Name</label>
+                            <input type="text" id="store-name" required placeholder="e.g., Woolworths Motueka">
+                        </div>
+                        <div class="form-group">
+                            <label for="store-address">Address (optional)</label>
+                            <input type="text" id="store-address" placeholder="e.g., 200 High Street, Motueka">
+                        </div>
+                        <div class="form-group">
+                            <label>Location</label>
+                            <button type="button" id="use-current-location-btn" class="btn-secondary">
+                                Use Current Location
+                            </button>
+                            <div id="location-coords" class="coords-display hidden">
+                                <small>Lat: <span id="coord-lat"></span>, Lng: <span id="coord-lng"></span></small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="trigger-radius">Trigger Distance (meters)</label>
+                            <input type="number" id="trigger-radius" value="150" min="50" max="1000" step="50">
+                            <small>App will show this list when you're within this distance</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" id="cancel-store-btn">Cancel</button>
+                            <button type="submit" class="btn-primary">Save Store</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Manage Store List -->
+        <div id="list-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="list-modal-title"></h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="add-item-form">
+                        <input type="text" id="new-item-input" placeholder="Add item to list...">
+                        <button id="add-item-btn">+</button>
+                    </div>
+                    <ul id="modal-items-list" class="items-list"></ul>
+                    <div class="form-actions">
+                        <button type="button" class="btn-danger" id="delete-store-btn">Delete Store</button>
+                        <button type="button" class="btn-primary" id="close-list-btn">Done</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings View -->
+        <div id="settings-view" class="view hidden">
+            <div class="section">
+                <h2>Settings</h2>
+                <div class="form-group">
+                    <label for="location-update-interval">Location Check Interval</label>
+                    <select id="location-update-interval">
+                        <option value="5000">5 seconds (battery intensive)</option>
+                        <option value="10000" selected>10 seconds (recommended)</option>
+                        <option value="30000">30 seconds (battery saving)</option>
+                        <option value="60000">1 minute (max battery saving)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button id="export-data-btn" class="btn-secondary">Export Data</button>
+                    <button id="import-data-btn" class="btn-secondary">Import Data</button>
+                    <input type="file" id="import-file-input" accept=".json" class="hidden">
+                </div>
+                <div class="info-section">
+                    <h3>About</h3>
+                    <p>Location Lists - Your shopping lists, automatically triggered by location.</p>
+                    <p><small>All data stored locally on your device.</small></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
