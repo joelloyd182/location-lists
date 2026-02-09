@@ -29,7 +29,10 @@
                 <div class="list-container">
                     <ul id="active-items-list" class="items-list"></ul>
                     <div class="add-item-form">
-                        <input type="text" id="quick-add-input" placeholder="Add item...">
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="quick-add-input" placeholder="Add item..." autocomplete="off">
+                            <div id="quick-add-autocomplete" class="autocomplete-dropdown hidden"></div>
+                        </div>
                         <button id="quick-add-btn">+</button>
                     </div>
                 </div>
@@ -116,7 +119,10 @@
                 </div>
                 <div class="modal-body">
                     <div class="add-item-form">
-                        <input type="text" id="new-item-input" placeholder="Add item to list...">
+                        <div class="autocomplete-wrapper">
+                            <input type="text" id="new-item-input" placeholder="Add item to list..." autocomplete="off">
+                            <div id="modal-autocomplete" class="autocomplete-dropdown hidden"></div>
+                        </div>
                         <button id="add-item-btn">+</button>
                     </div>
                     <ul id="modal-items-list" class="items-list"></ul>
@@ -142,6 +148,12 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="debug-mode-toggle"> Enable Debug Mode
+                    </label>
+                    <small>Show testing controls for notifications and location</small>
+                </div>
+                <div class="form-group">
                     <button id="export-data-btn" class="btn-secondary">Export Data</button>
                     <button id="import-data-btn" class="btn-secondary">Import Data</button>
                     <input type="file" id="import-file-input" accept=".json" class="hidden">
@@ -152,9 +164,45 @@
                     <p><small>All data stored locally on your device.</small></p>
                 </div>
             </div>
+
+            <!-- Debug Panel -->
+            <div id="debug-panel" class="section hidden">
+                <h2>🛠️ Debug Controls</h2>
+                
+                <div class="form-group">
+                    <label>Test Notifications</label>
+                    <button id="test-arrival-btn" class="btn-secondary">🔔 Test Arrival Notification</button>
+                    <button id="test-departure-btn" class="btn-secondary">🔔 Test Departure Notification</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Fake Location (Override GPS)</label>
+                    <div class="location-buttons">
+                        <button id="fake-location-btn" class="btn-secondary">📍 Set Fake Location</button>
+                        <button id="reset-location-btn" class="btn-secondary">🔄 Reset to Real GPS</button>
+                    </div>
+                    <div id="fake-coords-display" class="coords-display hidden">
+                        <small>Using fake location: <span id="fake-lat"></span>, <span id="fake-lng"></span></small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Quick Actions</label>
+                    <button id="clear-notification-cooldowns-btn" class="btn-secondary">🔄 Clear Notification Cooldowns</button>
+                    <small>Allows notifications to fire immediately again</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Notification Log</label>
+                    <div id="notification-log" class="notification-log">
+                        <small style="color: var(--text-muted);">No notifications sent yet</small>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="commonItems.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
