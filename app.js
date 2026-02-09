@@ -18,8 +18,9 @@ class LocationListsApp {
         this.init();
     }
 
-    init() {
-        this.loadData();
+    async init() {
+        await this.loadFromCloud(); // Load from cloud first
+        this.loadData(); // Then merge with local if needed
         this.loadStarredItems();
         this.loadCustomItems();
         this.registerServiceWorker();
@@ -156,6 +157,69 @@ class LocationListsApp {
             }
         };
         localStorage.setItem('locationLists', JSON.stringify(data));
+        
+        // Also sync to cloud KV
+        this.syncToCloud(data);
+    }
+
+    async syncToCloud(data) {
+        try {
+            const response = await fetch('/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    stores: data.stores,
+                    customItems: this.customItems,
+                    starredItems: [...this.starredItems],
+                    updatedAt: new Date().toISOString()
+                })
+            });
+            
+            if (response.ok) {
+                console.log('✅ Synced to cloud');
+            }
+        } catch (error) {
+            console.error('Cloud sync failed:', error);
+            // Fail silently - local storage still works
+        }
+    }
+
+    async loadFromCloud() {
+        try {
+            const response = await fetch('/sync');
+            if (response.ok) {
+                const cloudData = await response.json();
+                
+                // Only use cloud data if it's newer than local
+                const localData = localStorage.getItem('locationLists');
+                if (localData) {
+                    const local = JSON.parse(localData);
+                    const localTime = new Date(local.updatedAt || 0);
+                    const cloudTime = new Date(cloudData.updatedAt || 0);
+                    
+                    if (cloudTime > localTime) {
+                        console.log('📥 Loading from cloud (newer)');
+                        if (cloudData.stores) this.stores = cloudData.stores;
+                        if (cloudData.customItems) this.customItems = cloudData.customItems;
+                        if (cloudData.starredItems) this.starredItems = new Set(cloudData.starredItems);
+                        
+                        // Save to local storage too
+                        localStorage.setItem('locationLists', JSON.stringify(cloudData));
+                    } else {
+                        console.log('📱 Using local data (newer)');
+                    }
+                } else {
+                    // No local data, use cloud
+                    console.log('📥 Loading from cloud (no local data)');
+                    if (cloudData.stores) this.stores = cloudData.stores;
+                    if (cloudData.customItems) this.customItems = cloudData.customItems;
+                    if (cloudData.starredItems) this.starredItems = new Set(cloudData.starredItems);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load from cloud:', error);
+            // Continue with local storage
+        }
     }
 
     // Location Tracking
@@ -530,6 +594,7 @@ class LocationListsApp {
             this.customItems = [];
         }
     }
+
 
     // UI Rendering
     render() {
@@ -1289,6 +1354,6 @@ class LocationListsApp {
 
 // Initialize app
 let app;
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     app = new LocationListsApp();
 });
