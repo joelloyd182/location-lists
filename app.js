@@ -16,6 +16,9 @@ class LocationListsApp {
         this.customItems = []; // User's customized versions of items
         this.map = null; // Leaflet map instance
         this.markers = {}; // Store markers by store ID
+        this.tripMode = false; // Trip mode for aggressive tracking
+        this.tripInterval = null; // Interval for trip mode tracking
+        this.wakeLock = null; // Screen wake lock
         
         this.init();
     }
@@ -858,6 +861,11 @@ class LocationListsApp {
 
     // Event Listeners
     setupEventListeners() {
+        // Trip Mode Toggle
+        document.getElementById('trip-mode-toggle').addEventListener('click', () => {
+            this.toggleTripMode();
+        });
+
         // Navigation
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1414,6 +1422,106 @@ class LocationListsApp {
             this.starredItems = new Set(JSON.parse(saved));
         }
     }
+
+    // Trip Mode - Aggressive location tracking
+    async toggleTripMode() {
+        this.tripMode = !this.tripMode;
+        
+        const toggle = document.getElementById('trip-mode-toggle');
+        const icon = toggle.querySelector('.trip-icon');
+        const text = toggle.querySelector('.trip-text');
+        
+        if (this.tripMode) {
+            // Start trip mode
+            toggle.classList.add('active');
+            icon.textContent = '🟢';
+            text.textContent = 'Trip Active';
+            
+            // Request wake lock to keep screen on
+            try {
+                if ('wakeLock' in navigator) {
+                    this.wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake lock acquired');
+                }
+            } catch (err) {
+                console.log('Wake lock error:', err);
+            }
+            
+            // Start aggressive location checking (every 60 seconds)
+            this.startTripTracking();
+            
+            this.showToast('🚗 Trip mode started - tracking your location');
+            
+        } else {
+            // Stop trip mode
+            toggle.classList.remove('active');
+            icon.textContent = '🚗';
+            text.textContent = 'Start Trip';
+            
+            // Release wake lock
+            if (this.wakeLock) {
+                this.wakeLock.release();
+                this.wakeLock = null;
+            }
+            
+            // Stop trip tracking
+            this.stopTripTracking();
+            
+            this.showToast('Trip mode ended');
+        }
+    }
+
+    startTripTracking() {
+        // Clear any existing interval
+        if (this.tripInterval) {
+            clearInterval(this.tripInterval);
+        }
+        
+        // Check location immediately
+        this.forceLocationCheck();
+        
+        // Then check every 60 seconds
+        this.tripInterval = setInterval(() => {
+            this.forceLocationCheck();
+        }, 60000); // 60 seconds
+        
+        console.log('Trip tracking started - checking every 60 seconds');
+    }
+
+    stopTripTracking() {
+        if (this.tripInterval) {
+            clearInterval(this.tripInterval);
+            this.tripInterval = null;
+        }
+        console.log('Trip tracking stopped');
+    }
+
+    forceLocationCheck() {
+        if (!navigator.geolocation) return;
+        
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                if (!this.fakePosition) {
+                    this.currentPosition = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+                    console.log(`Trip check: ${position.coords.latitude}, ${position.coords.longitude}`);
+                    this.checkNearbyStores();
+                }
+            },
+            (error) => {
+                console.error('Trip location error:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    }
+
 
     // Stores Management View
     renderStoresManagement() {
