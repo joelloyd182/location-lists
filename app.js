@@ -21,7 +21,8 @@ class LocationListsApp {
         this.wakeLock = null; // Screen wake lock
         
         // Google Places API key (get from Google Cloud Console)
-        this.googlePlacesApiKey = 'AIzaSyDY5mGrbAYiPv7a8L18A9rDiODwrpu2oX8';
+        this.googlePlacesApiKey = 'YOUR_GOOGLE_PLACES_API_KEY_HERE';
+        
         this.init();
     }
 
@@ -888,6 +889,11 @@ class LocationListsApp {
             this.showStoreModal();
         });
 
+        // Plan Trip Button
+        document.getElementById('plan-trip-btn').addEventListener('click', () => {
+            this.planTrip();
+        });
+
         // Store Form
         document.getElementById('store-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -1349,6 +1355,235 @@ class LocationListsApp {
         }
         
         hoursDisplay.classList.remove('hidden');
+    }
+
+    // Trip Planner
+    planTrip() {
+        if (!this.currentPosition) {
+            alert('Need your location to plan a trip. Please enable location access.');
+            return;
+        }
+
+        // Get stores with unchecked items
+        const storesWithItems = this.stores.filter(store => {
+            const unchecked = store.items.filter(i => !i.checked).length;
+            return unchecked > 0;
+        });
+
+        if (storesWithItems.length === 0) {
+            alert('No stores with items! Add items to stores first.');
+            return;
+        }
+
+        // Analyze each store
+        const now = new Date();
+        const currentHour = now.getHours() + now.getMinutes() / 60;
+        const currentDay = now.getDay();
+        const daysMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        const analyzedStores = storesWithItems.map(store => {
+            const distance = this.calculateDistance(
+                this.currentPosition.lat,
+                this.currentPosition.lng,
+                store.location.lat,
+                store.location.lng
+            );
+
+            // Check if open now
+            let isOpen = true;
+            let closingTime = null;
+
+            if (store.storeInfo && store.storeInfo.opening_hours) {
+                isOpen = store.storeInfo.opening_hours.open_now !== undefined 
+                    ? store.storeInfo.opening_hours.open_now 
+                    : true;
+                
+                // Parse today's hours to get closing time
+                const todayHours = store.storeInfo.opening_hours.weekday_text?.find(
+                    day => day.startsWith(daysMap[currentDay])
+                );
+                
+                if (todayHours) {
+                    // Extract closing time (e.g., "Monday: 9:00 AM – 9:00 PM")
+                    const match = todayHours.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/);
+                    if (match) {
+                        let hour = parseInt(match[1]);
+                        const minute = parseInt(match[2]);
+                        const period = match[3];
+                        
+                        if (period === 'PM' && hour !== 12) hour += 12;
+                        if (period === 'AM' && hour === 12) hour = 0;
+                        
+                        closingTime = hour + minute / 60;
+                    }
+                }
+            }
+
+            const uncheckedCount = store.items.filter(i => !i.checked).length;
+
+            return {
+                store,
+                distance,
+                isOpen,
+                closingTime,
+                uncheckedCount,
+                urgency: this.calculateUrgency(isOpen, closingTime, currentHour, distance)
+            };
+        });
+
+        // Sort by urgency (highest first)
+        analyzedStores.sort((a, b) => b.urgency - a.urgency);
+
+        // Show the plan
+        this.showTripPlan(analyzedStores);
+    }
+
+    calculateUrgency(isOpen, closingTime, currentHour, distance) {
+        let urgency = 0;
+
+        // If closed, urgency is 0
+        if (!isOpen) return 0;
+
+        // Base urgency on how soon it closes
+        if (closingTime) {
+            const hoursUntilClose = closingTime - currentHour;
+            if (hoursUntilClose < 1) {
+                urgency += 100; // Closing very soon!
+            } else if (hoursUntilClose < 2) {
+                urgency += 50; // Closing soon
+            } else if (hoursUntilClose < 3) {
+                urgency += 25;
+            }
+        }
+
+        // Factor in distance (closer = slightly more urgent)
+        if (distance < 500) {
+            urgency += 10;
+        } else if (distance < 1000) {
+            urgency += 5;
+        }
+
+        return urgency;
+    }
+
+    showTripPlan(analyzedStores) {
+        const openStores = analyzedStores.filter(a => a.isOpen);
+        const closedStores = analyzedStores.filter(a => !a.isOpen);
+
+        if (openStores.length === 0) {
+            alert('All stores with items are currently closed! 😔');
+            return;
+        }
+
+        // Build the plan message
+        let message = '🗺️ OPTIMAL ROUTE\n\n';
+        
+        openStores.forEach((analyzed, index) => {
+            const { store, distance, closingTime, uncheckedCount } = analyzed;
+            const distanceText = this.formatDistance(distance);
+            
+            let timeInfo = '';
+            if (closingTime) {
+                const now = new Date().getHours() + new Date().getMinutes() / 60;
+                const hoursLeft = closingTime - now;
+                
+                if (hoursLeft < 2 && hoursLeft > 0) {
+                    const hours = Math.floor(hoursLeft);
+                    const mins = Math.round((hoursLeft - hours) * 60);
+                    timeInfo = ` ⚠️ Closes in ${hours}h ${mins}m`;
+                }
+            }
+
+            message += `${index + 1}. ${store.name}\n`;
+            message += `   📍 ${distanceText}${timeInfo}\n`;
+            message += `   🛒 ${uncheckedCount} items\n\n`;
+        });
+
+        if (closedStores.length > 0) {
+            message += '\n❌ CLOSED NOW:\n';
+            closedStores.forEach(({ store }) => {
+                message += `   • ${store.name}\n`;
+            });
+        }
+
+        message += '\n\nStart trip mode and show route on map?';
+
+        if (confirm(message)) {
+            // Show route on map and start trip mode
+            this.showRouteOnMap(openStores.map(a => a.store));
+            if (!this.tripMode) {
+                this.toggleTripMode();
+            }
+        }
+    }
+
+    showRouteOnMap(stores) {
+        // Switch to map view
+        this.switchView('map');
+
+        // Wait for map to be ready
+        setTimeout(() => {
+            if (this.map) {
+                // Clear existing markers
+                Object.values(this.markers).forEach(marker => marker.remove());
+                this.markers = {};
+
+                // Add numbered route markers
+                stores.forEach((store, index) => {
+                    const iconHtml = `
+                        <div style="width: 40px; height: 40px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; border: 3px solid white; box-shadow: var(--shadow-lg);">
+                            ${index + 1}
+                        </div>
+                    `;
+
+                    const customIcon = L.divIcon({
+                        html: iconHtml,
+                        className: 'route-marker',
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 40]
+                    });
+
+                    const marker = L.marker([store.location.lat, store.location.lng], {
+                        icon: customIcon
+                    }).addTo(this.map);
+
+                    const unchecked = store.items.filter(i => !i.checked).length;
+                    marker.bindPopup(`
+                        <div style="text-align: center; padding: 8px;">
+                            <strong>Stop ${index + 1}: ${store.name}</strong><br>
+                            <span style="color: #8B7371;">${unchecked} items</span>
+                        </div>
+                    `);
+
+                    marker.on('click', () => {
+                        this.openStoreModal(store.id);
+                    });
+
+                    this.markers[store.id] = marker;
+                });
+
+                // Add current location marker
+                if (this.currentPosition) {
+                    L.circleMarker([this.currentPosition.lat, this.currentPosition.lng], {
+                        radius: 8,
+                        fillColor: '#4ECDC4',
+                        color: 'white',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(this.map).bindPopup('You are here');
+                }
+
+                // Fit map to show all markers
+                const bounds = stores.map(s => [s.location.lat, s.location.lng]);
+                if (this.currentPosition) {
+                    bounds.push([this.currentPosition.lat, this.currentPosition.lng]);
+                }
+                if (bounds.length > 0) {
+                    this.map.fitBounds(bounds, { padding: [50, 50] });
+                }
+            }
+        }, 200);
     }
 
 
