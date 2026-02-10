@@ -56,7 +56,12 @@
             <!-- Stores Overview (shown when not near any store) -->
             <div id="stores-overview">
                 <div class="section">
-                    <h2>Your Stores</h2>
+                    <div class="section-header">
+                        <h2>Your Stores</h2>
+                        <button id="plan-trip-btn" class="btn-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                            🗺️ Plan My Trip
+                        </button>
+                    </div>
                     <div id="stores-list"></div>
                     <button id="add-store-btn" class="btn-primary">+ Add Store</button>
                 </div>
@@ -118,7 +123,14 @@
                         <div class="form-group">
                             <label for="store-address">Address</label>
                             <input type="text" id="store-address" placeholder="e.g., 200 High Street, Motueka">
-                            <small>Enter an address and click "Search Address" to find its location</small>
+                            <small>Enter full address for best results</small>
+                            <button type="button" id="fetch-store-info-btn" class="btn-secondary" style="margin-top: 0.5rem;">
+                                🕐 Fetch Store Hours & Info
+                            </button>
+                            <div id="store-hours-display" class="hidden" style="margin-top: 0.5rem; padding: 0.75rem; background: var(--background); border-radius: 8px; font-size: 0.875rem;">
+                                <strong>Store Hours:</strong>
+                                <div id="hours-content"></div>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Location</label>

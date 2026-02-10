@@ -20,6 +20,9 @@ class LocationListsApp {
         this.tripInterval = null; // Interval for trip mode tracking
         this.wakeLock = null; // Screen wake lock
         
+        // Google Places API key (get from Google Cloud Console)
+        this.googlePlacesApiKey = AIzaSyDY5mGrbAYiPv7a8L18A9rDiODwrpu2oX8;
+        
         this.init();
     }
 
@@ -497,10 +500,12 @@ class LocationListsApp {
             location,
             triggerRadius,
             website: website || '',
+            storeInfo: this.tempStoreInfo || null, // Google Places data (hours, busy times, etc)
             items: [],
             createdAt: new Date().toISOString()
         };
         this.stores.push(store);
+        this.tempStoreInfo = null; // Clear temp data
         this.saveData();
         return store;
     }
@@ -907,6 +912,10 @@ class LocationListsApp {
             this.geocodeAddress();
         });
 
+        document.getElementById('fetch-store-info-btn').addEventListener('click', () => {
+            this.fetchStoreInfo();
+        });
+
         // Quick Add Item (Active List)
         document.getElementById('quick-add-btn').addEventListener('click', () => {
             const input = document.getElementById('quick-add-input');
@@ -1252,6 +1261,97 @@ class LocationListsApp {
             searchBtn.disabled = false;
         }
     }
+
+    async fetchStoreInfo() {
+        const storeName = document.getElementById('store-name').value.trim();
+        const address = document.getElementById('store-address').value.trim();
+        
+        if (!storeName && !address) {
+            alert('Please enter store name or address first');
+            return;
+        }
+
+        const btn = document.getElementById('fetch-store-info-btn');
+        const originalText = btn.textContent;
+        btn.textContent = '⏳ Fetching...';
+        btn.disabled = true;
+
+        try {
+            // Build search query
+            const query = storeName && address ? `${storeName}, ${address}` : storeName || address;
+            
+            // Call our Cloudflare Function to proxy Google Places API
+            const response = await fetch('/api/places-info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    query,
+                    apiKey: this.googlePlacesApiKey 
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch store info');
+            }
+
+            const data = await response.json();
+            
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            // Display the hours
+            this.displayStoreHours(data);
+            
+            // Store for saving with the store
+            this.tempStoreInfo = data;
+            
+            this.showToast('✅ Store info loaded!');
+
+        } catch (error) {
+            console.error('Fetch store info error:', error);
+            alert('Failed to fetch store info. Check console for details.');
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    displayStoreHours(storeInfo) {
+        const hoursDisplay = document.getElementById('store-hours-display');
+        const hoursContent = document.getElementById('hours-content');
+        
+        if (!storeInfo.opening_hours || !storeInfo.opening_hours.weekday_text) {
+            hoursContent.innerHTML = '<em>Hours not available for this location</em>';
+            hoursDisplay.classList.remove('hidden');
+            return;
+        }
+
+        const today = new Date().getDay();
+        const daysMap = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const todayName = daysMap[today];
+        
+        const hoursHtml = storeInfo.opening_hours.weekday_text
+            .map(dayText => {
+                const isToday = dayText.startsWith(todayName);
+                return `<div style="${isToday ? 'font-weight: 700; color: var(--primary);' : 'color: var(--text-muted);'}">${dayText}</div>`;
+            })
+            .join('');
+        
+        hoursContent.innerHTML = hoursHtml;
+        
+        // Show if open now
+        if (storeInfo.opening_hours.open_now !== undefined) {
+            const status = storeInfo.opening_hours.open_now 
+                ? '<span style="color: var(--success); font-weight: 700;">✓ Open now</span>' 
+                : '<span style="color: var(--danger); font-weight: 700;">✗ Closed now</span>';
+            hoursContent.innerHTML = status + '<div style="height: 0.5rem;"></div>' + hoursContent.innerHTML;
+        }
+        
+        hoursDisplay.classList.remove('hidden');
+    }
+
 
     exportData() {
         const data = {
