@@ -21,8 +21,7 @@ class LocationListsApp {
         this.wakeLock = null; // Screen wake lock
         
         // Google Places API key (get from Google Cloud Console)
-        this.googlePlacesApiKey = AIzaSyDY5mGrbAYiPv7a8L18A9rDiODwrpu2oX8;
-        
+        this.googlePlacesApiKey = 'AIzaSyDY5mGrbAYiPv7a8L18A9rDiODwrpu2oX8';
         this.init();
     }
 
