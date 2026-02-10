@@ -14,6 +14,8 @@ class LocationListsApp {
         this.notificationLog = [];
         this.starredItems = new Set(); // User's favorite items
         this.customItems = []; // User's customized versions of items
+        this.map = null; // Leaflet map instance
+        this.markers = {}; // Store markers by store ID
         
         this.init();
     }
@@ -484,13 +486,14 @@ class LocationListsApp {
     }
 
     // Store Management
-    addStore(name, address, location, triggerRadius) {
+    addStore(name, address, location, triggerRadius, website = '') {
         const store = {
             id: Date.now().toString(),
             name,
             address,
             location,
             triggerRadius,
+            website: website || '',
             items: [],
             createdAt: new Date().toISOString()
         };
@@ -498,6 +501,20 @@ class LocationListsApp {
         this.saveData();
         return store;
     }
+
+    getStoreLogo(store) {
+        if (store.website) {
+            // Clean up website URL
+            let domain = store.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+            return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+        }
+        return null;
+    }
+
+    getStoreInitial(storeName) {
+        return storeName.charAt(0).toUpperCase();
+    }
+
 
     updateStore(id, updates) {
         const store = this.stores.find(s => s.id === id);
@@ -625,10 +642,21 @@ class LocationListsApp {
                 distanceText = this.formatDistance(distance);
             }
 
+            const logoUrl = this.getStoreLogo(store);
+            const logoHtml = logoUrl 
+                ? `<img src="${logoUrl}" alt="${store.name}" class="store-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                   <div class="store-logo-fallback" style="display:none">${this.getStoreInitial(store.name)}</div>`
+                : `<div class="store-logo-fallback">${this.getStoreInitial(store.name)}</div>`;
+
             return `
                 <div class="store-card" data-store-id="${store.id}">
-                    <h3>${store.name}</h3>
-                    ${store.address ? `<p>${store.address}</p>` : ''}
+                    <div class="store-card-header">
+                        ${logoHtml}
+                        <div class="store-card-info">
+                            <h3>${store.name}</h3>
+                            ${store.address ? `<p>${store.address}</p>` : ''}
+                        </div>
+                    </div>
                     <div class="store-meta">
                         <span>${store.items.length} items</span>
                         ${distanceText ? `<span>${distanceText}</span>` : ''}
@@ -650,7 +678,22 @@ class LocationListsApp {
         document.getElementById('active-list-view').classList.remove('hidden');
         document.getElementById('stores-overview').classList.add('hidden');
         
+        // Render store name
         document.getElementById('active-store-name').textContent = this.activeStore.name;
+        
+        // Render store logo
+        const logoContainer = document.getElementById('active-store-logo');
+        const logoUrl = this.getStoreLogo(this.activeStore);
+        if (logoUrl) {
+            logoContainer.innerHTML = `
+                <img src="${logoUrl}" alt="${this.activeStore.name}" class="active-store-logo-img" 
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                <div class="active-store-logo-fallback" style="display:none">${this.getStoreInitial(this.activeStore.name)}</div>
+            `;
+        } else {
+            logoContainer.innerHTML = `<div class="active-store-logo-fallback">${this.getStoreInitial(this.activeStore.name)}</div>`;
+        }
+        
         this.updateActiveDistance();
         this.renderActiveItems();
     }
@@ -825,6 +868,11 @@ class LocationListsApp {
 
         // Add Store Button
         document.getElementById('add-store-btn').addEventListener('click', () => {
+            this.showStoreModal();
+        });
+
+        // Add Store Button (Management View)
+        document.getElementById('add-store-management-btn').addEventListener('click', () => {
             this.showStoreModal();
         });
 
@@ -1111,6 +1159,7 @@ class LocationListsApp {
     handleStoreFormSubmit() {
         const name = document.getElementById('store-name').value.trim();
         const address = document.getElementById('store-address').value.trim();
+        const website = document.getElementById('store-website').value.trim();
         const triggerRadius = parseInt(document.getElementById('trigger-radius').value);
 
         if (!name) return;
@@ -1127,9 +1176,24 @@ class LocationListsApp {
 
         const location = { lat, lng };
 
-        this.addStore(name, address, location, triggerRadius);
+        if (this.editingStoreId) {
+            // Update existing store
+            this.updateStore(this.editingStoreId, {
+                name,
+                address,
+                website,
+                location,
+                triggerRadius
+            });
+            this.editingStoreId = null;
+        } else {
+            // Add new store
+            this.addStore(name, address, location, triggerRadius, website);
+        }
+        
         this.hideStoreModal();
         this.renderStoresList();
+        this.renderStoresManagement();
     }
 
     async geocodeAddress() {
@@ -1348,6 +1412,226 @@ class LocationListsApp {
         const saved = localStorage.getItem('starredItems');
         if (saved) {
             this.starredItems = new Set(JSON.parse(saved));
+        }
+    }
+
+    // Stores Management View
+    renderStoresManagement() {
+        const container = document.getElementById('stores-management-list');
+        
+        if (this.stores.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>No stores yet. Add your first store to get started!</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = this.stores.map(store => {
+            const logoUrl = this.getStoreLogo(store);
+            const logoHtml = logoUrl 
+                ? `<img src="${logoUrl}" alt="${store.name}" class="store-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                   <div class="store-logo-fallback" style="display:none">${this.getStoreInitial(store.name)}</div>`
+                : `<div class="store-logo-fallback">${this.getStoreInitial(store.name)}</div>`;
+
+            const uncheckedItems = store.items.filter(i => !i.checked).length;
+
+            return `
+                <div class="store-management-card">
+                    <div class="store-card-header">
+                        ${logoHtml}
+                        <div class="store-card-info">
+                            <h3>${store.name}</h3>
+                            ${store.address ? `<p>${store.address}</p>` : ''}
+                            <div class="store-meta">
+                                <span>${store.items.length} items ${uncheckedItems > 0 ? `(${uncheckedItems} pending)` : ''}</span>
+                                <span>Trigger: ${store.triggerRadius}m</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="store-actions">
+                        <button class="btn-edit" data-store-id="${store.id}">✏️ Edit</button>
+                        <button class="btn-delete" data-store-id="${store.id}">🗑️ Delete</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Add event listeners
+        container.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const storeId = btn.dataset.storeId;
+                this.editStore(storeId);
+            });
+        });
+
+        container.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const storeId = btn.dataset.storeId;
+                const store = this.getStore(storeId);
+                if (confirm(`Delete ${store.name}? This will also delete all items in the list.`)) {
+                    this.deleteStore(storeId);
+                    this.renderStoresManagement();
+                }
+            });
+        });
+    }
+
+    editStore(storeId) {
+        this.editingStoreId = storeId;
+        const store = this.getStore(storeId);
+        
+        // Populate form
+        document.getElementById('store-modal-title').textContent = 'Edit Store';
+        document.getElementById('store-name').value = store.name;
+        document.getElementById('store-address').value = store.address || '';
+        document.getElementById('store-website').value = store.website || '';
+        document.getElementById('trigger-radius').value = store.triggerRadius;
+        
+        // Show coordinates
+        document.getElementById('coord-lat').textContent = store.location.lat.toFixed(6);
+        document.getElementById('coord-lng').textContent = store.location.lng.toFixed(6);
+        document.getElementById('location-coords').classList.remove('hidden');
+        
+        this.showStoreModal();
+    }
+
+    deleteStore(storeId) {
+        this.stores = this.stores.filter(s => s.id !== storeId);
+        if (this.activeStore && this.activeStore.id === storeId) {
+            this.activeStore = null;
+        }
+        this.saveData();
+    }
+
+
+    // Map View
+    initMap() {
+        if (this.map) return; // Already initialized
+
+        const mapContainer = document.getElementById('map-container');
+        if (!mapContainer) return;
+
+        // Initialize map
+        this.map = L.map('map-container', {
+            zoomControl: true,
+            attributionControl: false
+        });
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(this.map);
+
+        // Center on user location or default
+        if (this.currentPosition) {
+            this.map.setView([this.currentPosition.lat, this.currentPosition.lng], 14);
+            
+            // Add user location marker
+            L.circleMarker([this.currentPosition.lat, this.currentPosition.lng], {
+                radius: 8,
+                fillColor: '#4ECDC4',
+                color: 'white',
+                weight: 3,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(this.map).bindPopup('You are here');
+        } else {
+            // Default to Motueka if no location
+            this.map.setView([-41.1206, 172.9897], 13);
+        }
+
+        // Add store markers
+        this.renderStoreMarkers();
+    }
+
+    renderStoreMarkers() {
+        if (!this.map) return;
+
+        // Clear existing markers
+        Object.values(this.markers).forEach(marker => marker.remove());
+        this.markers = {};
+
+        // Add marker for each store
+        this.stores.forEach(store => {
+            const uncheckedItems = store.items.filter(i => !i.checked).length;
+            const allDone = store.items.length > 0 && uncheckedItems === 0;
+            
+            // Create custom icon
+            const iconHtml = `
+                <div class="marker-icon ${allDone ? 'all-done' : 'has-items'}">
+                    ${allDone ? '✓' : '🛒'}
+                    ${uncheckedItems > 0 ? `<div class="marker-badge">${uncheckedItems}</div>` : ''}
+                </div>
+            `;
+
+            const customIcon = L.divIcon({
+                html: iconHtml,
+                className: 'custom-marker',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40]
+            });
+
+            // Add marker
+            const marker = L.marker([store.location.lat, store.location.lng], {
+                icon: customIcon
+            }).addTo(this.map);
+
+            // Popup with store name and item count
+            const popupContent = `
+                <div style="text-align: center; padding: 8px;">
+                    <strong>${store.name}</strong><br>
+                    <span style="color: ${allDone ? '#51CF66' : '#8B7371'}">
+                        ${allDone ? 'All done! ✓' : `${uncheckedItems} items`}
+                    </span>
+                </div>
+            `;
+            marker.bindPopup(popupContent);
+
+            // Click to open store
+            marker.on('click', () => {
+                this.openStoreModal(store.id);
+                this.switchView('home');
+            });
+
+            this.markers[store.id] = marker;
+        });
+    }
+
+    switchView(view) {
+        // Hide all views
+        document.getElementById('active-list-view')?.classList.add('hidden');
+        document.getElementById('stores-overview')?.classList.add('hidden');
+        document.getElementById('stores-management-view')?.classList.add('hidden');
+        document.getElementById('map-view')?.classList.add('hidden');
+
+        // Update nav buttons
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === view);
+        });
+
+        // Show requested view
+        if (view === 'stores') {
+            document.getElementById('stores-management-view')?.classList.remove('hidden');
+            this.renderStoresManagement();
+        } else if (view === 'map') {
+            document.getElementById('map-view')?.classList.remove('hidden');
+            if (!this.map) {
+                // Delay init to ensure container is visible
+                setTimeout(() => {
+                    this.initMap();
+                }, 100);
+            } else {
+                this.map.invalidateSize(); // Refresh map size
+                this.renderStoreMarkers(); // Update markers
+            }
+        } else if (view === 'home') {
+            if (this.activeStore) {
+                document.getElementById('active-list-view')?.classList.remove('hidden');
+            } else {
+                document.getElementById('stores-overview')?.classList.remove('hidden');
+            }
         }
     }
 }

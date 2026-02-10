@@ -141,7 +141,6 @@ main {
     padding: 2rem 1.5rem;
     border-radius: 20px;
     margin-bottom: 1rem;
-    text-align: center;
     box-shadow: var(--shadow-lg);
     position: relative;
     overflow: hidden;
@@ -163,20 +162,59 @@ main {
     50% { transform: translate(-30%, -30%); }
 }
 
+.active-store-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+#active-store-logo {
+    flex-shrink: 0;
+}
+
+.active-store-logo-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    object-fit: cover;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: var(--shadow-md);
+}
+
+.active-store-logo-fallback {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: var(--shadow-md);
+}
+
+.active-store-info {
+    flex: 1;
+    min-width: 0;
+}
+
 .active-store-banner h2 {
     color: white;
     font-size: 1.75rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
     font-weight: 700;
-    position: relative;
-    z-index: 1;
 }
 
 .active-store-banner p {
     opacity: 0.95;
     font-size: 0.875rem;
-    position: relative;
-    z-index: 1;
+    margin: 0;
 }
 
 /* Lists */
@@ -423,9 +461,45 @@ main {
     transform: translateY(-2px);
 }
 
+.store-card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.store-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+}
+
+.store-logo-fallback {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+}
+
+.store-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
 .store-card h3 {
     font-size: 1.25rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
     color: var(--text);
     font-weight: 600;
 }
@@ -433,7 +507,7 @@ main {
 .store-card p {
     font-size: 0.875rem;
     color: var(--text-muted);
-    margin-bottom: 0.25rem;
+    margin: 0;
 }
 
 .store-card .store-meta {
@@ -715,6 +789,143 @@ main {
 .hidden {
     display: none !important;
 }
+
+/* Stores Management View */
+#stores-management-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.store-management-card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+
+.store-management-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.store-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.btn-edit,
+.btn-delete {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-edit {
+    background: var(--gradient-cool);
+    color: white;
+}
+
+.btn-edit:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-delete {
+    background: rgba(255, 107, 107, 0.1);
+    color: var(--danger);
+    border: 2px solid var(--danger);
+}
+
+.btn-delete:hover {
+    background: var(--danger);
+    color: white;
+    transform: translateY(-2px);
+}
+
+
+/* Map View */
+#map-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 70px;
+    z-index: 50;
+    background: var(--background);
+}
+
+#map-container {
+    width: 100%;
+    height: 100%;
+}
+
+.custom-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.marker-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: var(--shadow-lg);
+    border: 3px solid white;
+    position: relative;
+}
+
+.marker-icon.has-items {
+    background: var(--primary);
+}
+
+.marker-icon.all-done {
+    background: var(--success);
+}
+
+.marker-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: white;
+    color: var(--text);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: var(--shadow-md);
+}
+
+.marker-label {
+    background: white;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+    box-shadow: var(--shadow-sm);
+    white-space: nowrap;
+}
+
 
 .view {
     padding: 1rem;

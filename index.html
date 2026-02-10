@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#FF6B6B">
     <title>Location Lists</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Leaflet Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div id="app">
@@ -23,8 +27,13 @@
             <!-- Active List View (shown when near a store) -->
             <div id="active-list-view" class="hidden">
                 <div class="active-store-banner">
-                    <h2 id="active-store-name"></h2>
-                    <p id="active-store-distance"></p>
+                    <div class="active-store-header">
+                        <div id="active-store-logo"></div>
+                        <div class="active-store-info">
+                            <h2 id="active-store-name"></h2>
+                            <p id="active-store-distance"></p>
+                        </div>
+                    </div>
                 </div>
                 <div class="list-container">
                     <ul id="active-items-list" class="items-list"></ul>
@@ -46,6 +55,20 @@
                     <button id="add-store-btn" class="btn-primary">+ Add Store</button>
                 </div>
             </div>
+
+            <!-- Map View -->
+            <div id="map-view" class="hidden">
+                <div id="map-container"></div>
+            </div>
+
+            <!-- Stores Management View -->
+            <div id="stores-management-view" class="hidden">
+                <div class="section">
+                    <h2>Manage Stores</h2>
+                    <div id="stores-management-list"></div>
+                    <button id="add-store-management-btn" class="btn-primary">+ Add Store</button>
+                </div>
+            </div>
         </main>
 
         <!-- Navigation -->
@@ -57,6 +80,10 @@
             <button class="nav-btn" data-view="stores">
                 <span>🏪</span>
                 <span>Stores</span>
+            </button>
+            <button class="nav-btn" data-view="map">
+                <span>🗺️</span>
+                <span>Map</span>
             </button>
             <button class="nav-btn" data-view="settings">
                 <span>⚙️</span>
@@ -76,6 +103,11 @@
                         <div class="form-group">
                             <label for="store-name">Store Name</label>
                             <input type="text" id="store-name" required placeholder="e.g., Woolworths Motueka">
+                        </div>
+                        <div class="form-group">
+                            <label for="store-website">Website (optional)</label>
+                            <input type="text" id="store-website" placeholder="e.g., woolworths.co.nz">
+                            <small>Used to fetch store logo automatically</small>
                         </div>
                         <div class="form-group">
                             <label for="store-address">Address</label>
